@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTC Trading Bot — Signal Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#070b0f; --bg2:#0d1117; --bg3:#161b22;
+  --border:#21262d; --border2:#30363d;
+  --text:#e6edf3; --muted:#7d8590;
+  --long:#26a69a; --short:#ef5350;
+  --accent:#f0c040; --accent2:#4fc3f7;
+  --grade-s:#f0c040; --grade-a:#26a69a; --grade-b:#4fc3f7; --grade-c:#ff9800; --grade-f:#ef5350;
+  --radius:8px; --mono:'Space Mono',monospace; --sans:'Syne',sans-serif;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; min-height:100vh; overflow-x:hidden; }
+body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 4px); pointer-events:none; z-index:9999; }
+.shell { max-width:1600px; margin:0 auto; padding:0 24px 80px; }
+
+/* Header */
+header { display:flex; align-items:center; justify-content:space-between; padding:28px 0 24px; border-bottom:1px solid var(--border); margin-bottom:28px; position:sticky; top:0; background:var(--bg); z-index:100; }
+.logo { display:flex; align-items:center; gap:14px; }
+.logo-icon { width:38px; height:38px; background:var(--accent); border-radius:6px; display:grid; place-items:center; font-size:18px; box-shadow:0 0 20px rgba(240,192,64,.3); }
+.logo-text h1 { font-weight:800; font-size:18px; letter-spacing:-.3px; line-height:1; }
+.logo-text span { font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; }
+.header-right { display:flex; align-items:center; gap:14px; }
+.live-badge { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10px; color:var(--long); letter-spacing:1px; text-transform:uppercase; }
+.live-dot { width:7px; height:7px; border-radius:50%; background:var(--long); animation:pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(38,166,154,.5)} 50%{opacity:.7;box-shadow:0 0 0 6px rgba(38,166,154,0)} }
+.refresh-btn { background:var(--bg3); border:1px solid var(--border2); color:var(--text); padding:7px 16px; border-radius:var(--radius); font-family:var(--mono); font-size:11px; cursor:pointer; letter-spacing:.5px; transition:all .2s; }
+.refresh-btn:hover { border-color:var(--accent); color:var(--accent); box-shadow:0 0 12px rgba(240,192,64,.15); }
+
+/* Stats */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:28px; }
+.stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:16px 20px; position:relative; overflow:hidden; }
+.stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--accent-bar,var(--accent)); opacity:.7; }
+.stat-label { font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px; }
+.stat-value { font-family:var(--mono); font-size:28px; font-weight:700; line-height:1; }
+.stat-sub   { font-family:var(--mono); font-size:10px; color:var(--muted); margin-top:4px; }
+
+/* Tabs */
+.tabs-bar { display:flex; align-items:center; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.tab-btn { background:none; border:none; border-bottom:2px solid transparent; color:var(--muted); padding:10px 22px; font-family:var(--mono); font-size:12px; letter-spacing:.5px; cursor:pointer; margin-bottom:-1px; transition:all .2s; }
+.tab-btn:hover { color:var(--text); }
+.tab-btn.active { color:var(--text); border-bottom-color:var(--accent); }
+.tab-count { display:inline-block; background:var(--bg3); border:1px solid var(--border2); color:var(--muted); font-size:10px; padding:1px 7px; border-radius:10px; margin-left:8px; }
+.tab-btn.active .tab-count { background:rgba(240,192,64,.1); border-color:rgba(240,192,64,.3); color:var(--accent); }
+
+/* Countdown */
+.countdown-bar { display:flex; align-items:center; gap:10px; padding:8px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:16px; font-family:var(--mono); font-size:11px; color:var(--muted); }
+.countdown-bar .hl { color:var(--accent); font-weight:700; }
+.progress-track { flex:1; height:3px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width 1s linear; }
+
+/* Archive controls */
+.archive-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 16px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:16px; }
+.archive-controls label { font-family:var(--mono); font-size:11px; color:var(--muted); }
+.arc-select { background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius); color:var(--text); padding:7px 12px; font-family:var(--mono); font-size:11px; cursor:pointer; outline:none; min-width:140px; transition:border-color .2s; }
+.arc-select:hover, .arc-select:focus { border-color:var(--accent2); }
+.arc-reset { background:none; border:1px solid var(--border2); color:var(--muted); padding:7px 14px; border-radius:var(--radius); font-family:var(--mono); font-size:11px; cursor:pointer; transition:all .15s; }
+.arc-reset:hover { border-color:var(--short); color:var(--short); }
+
+/* Toolbar */
+.toolbar { display:flex; align-items:center; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+.filter-group { display:flex; gap:4px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:4px; }
+.filter-btn { background:none; border:none; color:var(--muted); padding:6px 14px; border-radius:5px; font-family:var(--mono); font-size:11px; cursor:pointer; transition:all .15s; letter-spacing:.5px; }
+.filter-btn:hover { color:var(--text); }
+.filter-btn.active { background:var(--bg3); color:var(--text); box-shadow:inset 0 0 0 1px var(--border2); }
+.filter-btn.long.active  { color:var(--long); }
+.filter-btn.short.active { color:var(--short); }
+.sort-select, .search-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); padding:8px 14px; font-family:var(--mono); font-size:11px; outline:none; transition:border-color .2s; cursor:pointer; }
+.search-box { width:200px; cursor:text; }
+.search-box::placeholder { color:var(--muted); }
+.search-box:focus, .sort-select:focus { border-color:var(--accent); }
+.count-badge { margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--muted); background:var(--bg2); border:1px solid var(--border); padding:6px 14px; border-radius:var(--radius); }
+
+/* ── Chart Card ─────────────────────────────────────────── */
+.charts-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(500px,1fr)); gap:20px; }
+.chart-card { background:var(--bg2); border:1px solid var(--border); border-radius:12px; overflow:hidden; transition:transform .2s, border-color .2s, box-shadow .2s; animation:fadeIn .35s ease both; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.chart-card:hover { transform:translateY(-2px); }
+.chart-card.long-card:hover  { border-color:rgba(38,166,154,.4); box-shadow:0 8px 32px rgba(38,166,154,.12); }
+.chart-card.short-card:hover { border-color:rgba(239,83,80,.4); box-shadow:0 8px 32px rgba(239,83,80,.12); }
+
+/* Card Header */
+.card-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); }
+.card-left { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.dir-badge { font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:1.5px; padding:3px 8px; border-radius:4px; }
+.dir-badge.long  { background:rgba(38,166,154,.15); color:var(--long);  border:1px solid rgba(38,166,154,.3); }
+.dir-badge.short { background:rgba(239,83,80,.15);  color:var(--short); border:1px solid rgba(239,83,80,.3); }
+.tf-badge { font-family:var(--mono); font-size:11px; color:var(--accent); background:rgba(240,192,64,.08); border:1px solid rgba(240,192,64,.2); padding:3px 8px; border-radius:4px; }
+.signal-name { font-family:var(--mono); font-size:11px; color:var(--muted); }
+.card-right { font-family:var(--mono); font-size:10px; color:var(--muted); text-align:right; line-height:1.7; flex-shrink:0; }
+.age-pill { display:inline-block; background:rgba(240,192,64,.08); color:var(--accent); border:1px solid rgba(240,192,64,.2); font-size:9px; padding:1px 6px; border-radius:4px; }
+
+/* Grade badge in header */
+.grade-badge { font-family:var(--mono); font-size:13px; font-weight:700; width:28px; height:28px; border-radius:6px; display:grid; place-items:center; border:1px solid; flex-shrink:0; }
+
+/* Chart image — clickable */
+.card-image { width:100%; aspect-ratio:16/9; overflow:hidden; background:var(--bg); position:relative; cursor:zoom-in; }
+.card-image img { width:100%; height:100%; object-fit:cover; object-position:top; transition:transform .4s; display:block; }
+.chart-card:hover .card-image img { transform:scale(1.02); }
+.img-loading { position:absolute; inset:0; display:grid; place-items:center; font-family:var(--mono); font-size:11px; color:var(--muted); }
+.zoom-hint { position:absolute; bottom:8px; right:8px; background:rgba(13,17,23,.8); border:1px solid var(--border2); color:var(--muted); font-family:var(--mono); font-size:9px; padding:3px 7px; border-radius:4px; opacity:0; transition:opacity .2s; pointer-events:none; }
+.card-image:hover .zoom-hint { opacity:1; }
+
+/* ── Scorecard ───────────────────────────────────────────── */
+.scorecard { border-top:1px solid var(--border); }
+
+/* Scorecard toggle */
+.scorecard-toggle { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; cursor:pointer; user-select:none; transition:background .15s; }
+.scorecard-toggle:hover { background:rgba(255,255,255,.02); }
+.scorecard-toggle-left { display:flex; align-items:center; gap:10px; }
+.score-total-bar { flex:1; max-width:120px; height:5px; background:var(--border2); border-radius:3px; overflow:hidden; }
+.score-total-fill { height:100%; border-radius:3px; transition:width .6s ease; }
+.score-total-text { font-family:var(--mono); font-size:11px; }
+.toggle-arrow { font-size:10px; color:var(--muted); transition:transform .25s; }
+.toggle-arrow.open { transform:rotate(180deg); }
+
+/* Scorecard body */
+.scorecard-body { display:none; padding:0 16px 16px; }
+.scorecard-body.open { display:block; animation:scOpen .2s ease; }
+@keyframes scOpen { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+
+/* Dimension rows */
+.sc-dims { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.sc-dim { display:grid; grid-template-columns:140px 1fr 36px 80px; align-items:center; gap:8px; }
+.sc-dim-name { font-family:var(--mono); font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sc-bar-track { height:6px; background:var(--border2); border-radius:3px; overflow:hidden; }
+.sc-bar-fill { height:100%; border-radius:3px; transition:width .5s ease; }
+.sc-pts { font-family:var(--mono); font-size:9px; color:var(--muted); text-align:right; white-space:nowrap; }
+.sc-note { font-family:var(--mono); font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; grid-column:2/5; margin-top:-2px; padding-left:2px; }
+
+/* Trade details row */
+.sc-trade { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; padding:10px; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); }
+.sc-trade-item { display:flex; flex-direction:column; gap:2px; }
+.sc-trade-label { font-family:var(--mono); font-size:9px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.sc-trade-value { font-family:var(--mono); font-size:11px; font-weight:700; }
+
+/* RR row */
+.sc-rr { display:flex; gap:8px; margin-bottom:10px; }
+.sc-rr-pill { flex:1; text-align:center; padding:6px 4px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; }
+.sc-rr-label { font-family:var(--mono); font-size:9px; color:var(--muted); }
+.sc-rr-value { font-family:var(--mono); font-size:12px; font-weight:700; margin-top:2px; }
+
+/* Pass/fail reasons */
+.sc-reasons { display:flex; flex-direction:column; gap:4px; }
+.sc-reason { font-family:var(--mono); font-size:9px; padding:3px 8px; border-radius:4px; }
+.sc-reason.pass { color:#26a69a; background:rgba(38,166,154,.08); border-left:2px solid #26a69a; }
+.sc-reason.fail { color:#ef5350; background:rgba(239,83,80,.08); border-left:2px solid #ef5350; }
+
+/* no-score placeholder */
+.no-score { padding:10px 16px; font-family:var(--mono); font-size:10px; color:var(--muted); text-align:center; border-top:1px solid var(--border); }
+
+/* Empty state */
+.empty-state { grid-column:1/-1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:80px 20px; color:var(--muted); font-family:var(--mono); font-size:12px; letter-spacing:.5px; text-align:center; }
+.empty-icon { font-size:48px; opacity:.3; }
+.skeleton { background:linear-gradient(90deg,var(--bg2) 25%,var(--bg3) 50%,var(--bg2) 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; border-radius:4px; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* Lightbox */
+.lightbox { position:fixed; inset:0; background:rgba(7,11,15,.94); backdrop-filter:blur(10px); z-index:1000; display:none; place-items:center; padding:24px; }
+.lightbox.open { display:grid; }
+.lb-inner { position:relative; max-width:min(1500px,96vw); max-height:94vh; display:flex; flex-direction:column; background:var(--bg2); border:1px solid var(--border2); border-radius:12px; overflow:hidden; box-shadow:0 40px 120px rgba(0,0,0,.8); animation:lbIn .22s ease; }
+@keyframes lbIn { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
+.lb-header { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.lb-title { display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:12px; flex:1; flex-wrap:wrap; }
+.lb-close { background:var(--bg3); border:1px solid var(--border2); color:var(--muted); width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:16px; display:grid; place-items:center; transition:all .15s; flex-shrink:0; }
+.lb-close:hover { color:var(--text); border-color:var(--short); }
+.lb-image { overflow:auto; flex:1; display:grid; place-items:start center; padding:16px; min-height:0; }
+.lb-image img { max-width:100%; border-radius:6px; display:block; }
+.lb-nav { display:flex; align-items:center; justify-content:center; gap:12px; padding:12px 20px; border-top:1px solid var(--border); flex-shrink:0; }
+.lb-nav-btn { background:var(--bg3); border:1px solid var(--border2); color:var(--text); padding:7px 20px; border-radius:var(--radius); font-family:var(--mono); font-size:11px; cursor:pointer; transition:all .15s; }
+.lb-nav-btn:hover { border-color:var(--accent); color:var(--accent); }
+.lb-nav-btn:disabled { opacity:.3; cursor:default; }
+.lb-counter { font-family:var(--mono); font-size:11px; color:var(--muted); }
+
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:700px) { .charts-grid{grid-template-columns:1fr} .stats-grid{grid-template-columns:repeat(3,1fr)} header{flex-wrap:wrap;gap:12px} .search-box{width:130px} .sc-dim{grid-template-columns:100px 1fr 30px} }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">₿</div>
+    <div class="logo-text"><h1>Signal Dashboard</h1><span>BTC/USDT · Trading Bot</span></div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div>Live</div>
+    <button class="refresh-btn" onclick="refreshAll()">↻ Refresh</button>
+  </div>
+</header>
+
+<!-- Stats -->
+<div class="stats-grid" id="statsGrid">
+  <div class="stat-card skeleton" style="height:80px"></div>
+  <div class="stat-card skeleton" style="height:80px"></div>
+  <div class="stat-card skeleton" style="height:80px"></div>
+  <div class="stat-card skeleton" style="height:80px"></div>
+  <div class="stat-card skeleton" style="height:80px"></div>
+  <div class="stat-card skeleton" style="height:80px"></div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs-bar" style="justify-content:space-between;align-items:center">
+  <div style="display:flex">
+    <button class="tab-btn active" id="tabBtnRecent" onclick="switchTab('recent')">
+      ⚡ Aktuell (letzte 60 Min) <span class="tab-count" id="recentCount">–</span>
+    </button>
+    <button class="tab-btn" id="tabBtnArchive" onclick="switchTab('archive')">
+      🗄 Archiv <span class="tab-count" id="archiveCount">–</span>
+    </button>
+  </div>
+  <a href="/macro" style="background:rgba(206,147,216,.08);border:1px solid rgba(206,147,216,.35);color:#ce93d8;padding:7px 18px;border-radius:6px;font-family:var(--mono);font-size:11px;text-decoration:none;letter-spacing:.5px;transition:all .2s;display:inline-flex;align-items:center;gap:6px" onmouseover="this.style.background='rgba(206,147,216,.18)'" onmouseout="this.style.background='rgba(206,147,216,.08)'">📐 Makro 1W+1D</a>
+  <a href="/liquidity" style="background:rgba(239,83,80,.08);border:1px solid rgba(239,83,80,.35);color:#ef9a9a;padding:7px 18px;border-radius:6px;font-family:var(--mono);font-size:11px;text-decoration:none;letter-spacing:.5px;margin-left:8px">🔥 Liquidität</a>
+</div>
+
+<!-- RECENT TAB -->
+<div id="tabRecent">
+  <div class="countdown-bar">
+    <span>Letzte <span class="hl">60 Minuten</span> · Signale ab <span class="hl">40% Score</span></span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:100%"></div></div>
+    <span>Refresh in <span class="hl" id="countdownVal">30</span>s</span>
+  </div>
+  <div class="toolbar">
+    <div class="filter-group" id="rDirFilter">
+      <button class="filter-btn active" onclick="setFilter('recent','dir','all',this)">Alle</button>
+      <button class="filter-btn long"   onclick="setFilter('recent','dir','LONG',this)">▲ Long</button>
+      <button class="filter-btn short"  onclick="setFilter('recent','dir','SHORT',this)">▼ Short</button>
+    </div>
+    <div class="filter-group" id="rTfFilter">
+      <button class="filter-btn active" onclick="setFilter('recent','tf','all',this)">Alle TFs</button>
+    </div>
+    <div class="filter-group" id="rGradeFilter">
+      <button class="filter-btn active" onclick="setFilter('recent','grade','all',this)">Alle Grades</button>
+      <button class="filter-btn" onclick="setFilter('recent','grade','S',this)" style="color:var(--grade-s)">S</button>
+      <button class="filter-btn" onclick="setFilter('recent','grade','A',this)" style="color:var(--grade-a)">A</button>
+      <button class="filter-btn" onclick="setFilter('recent','grade','B',this)" style="color:var(--grade-b)">B</button>
+      <button class="filter-btn" onclick="setFilter('recent','grade','C',this)" style="color:var(--grade-c)">C</button>
+    </div>
+    <select class="sort-select" onchange="setSort('recent',this.value)">
+      <option value="newest">Neueste zuerst</option>
+      <option value="oldest">Älteste zuerst</option>
+      <option value="score_desc">Höchster Score</option>
+      <option value="score_asc">Niedrigster Score</option>
+      <option value="tf">Nach Timeframe</option>
+    </select>
+    <input class="search-box" type="text" placeholder="Signal suchen …" oninput="setSearch('recent',this.value)">
+    <div class="count-badge" id="rCountBadge">–</div>
+  </div>
+  <div class="charts-grid" id="recentGrid"></div>
+</div>
+
+<!-- ARCHIVE TAB -->
+<div id="tabArchive" style="display:none">
+  <div class="archive-controls">
+    <label>📅 Tag:</label>
+    <select class="arc-select" id="arcDate" onchange="applyArcFilter()"><option value="">Alle Tage</option></select>
+    <label>🕐 Stunde:</label>
+    <select class="arc-select" id="arcHour" onchange="applyArcFilter()"><option value="">Alle Stunden</option></select>
+    <button class="arc-reset" onclick="resetArcFilter()">✕ Zurücksetzen</button>
+    <div class="count-badge" id="aCountBadge" style="margin-left:auto">–</div>
+  </div>
+  <div class="toolbar">
+    <div class="filter-group" id="aDirFilter">
+      <button class="filter-btn active" onclick="setFilter('archive','dir','all',this)">Alle</button>
+      <button class="filter-btn long"   onclick="setFilter('archive','dir','LONG',this)">▲ Long</button>
+      <button class="filter-btn short"  onclick="setFilter('archive','dir','SHORT',this)">▼ Short</button>
+    </div>
+    <div class="filter-group" id="aTfFilter">
+      <button class="filter-btn active" onclick="setFilter('archive','tf','all',this)">Alle TFs</button>
+    </div>
+    <div class="filter-group" id="aGradeFilter">
+      <button class="filter-btn active" onclick="setFilter('archive','grade','all',this)">Alle Grades</button>
+      <button class="filter-btn" onclick="setFilter('archive','grade','S',this)" style="color:var(--grade-s)">S</button>
+      <button class="filter-btn" onclick="setFilter('archive','grade','A',this)" style="color:var(--grade-a)">A</button>
+      <button class="filter-btn" onclick="setFilter('archive','grade','B',this)" style="color:var(--grade-b)">B</button>
+      <button class="filter-btn" onclick="setFilter('archive','grade','C',this)" style="color:var(--grade-c)">C</button>
+    </div>
+    <select class="sort-select" onchange="setSort('archive',this.value)">
+      <option value="newest">Neueste zuerst</option>
+      <option value="oldest">Älteste zuerst</option>
+      <option value="score_desc">Höchster Score</option>
+      <option value="score_asc">Niedrigster Score</option>
+      <option value="tf">Nach Timeframe</option>
+    </select>
+    <input class="search-box" type="text" placeholder="Signal suchen …" oninput="setSearch('archive',this.value)">
+  </div>
+  <div class="charts-grid" id="archiveGrid"></div>
+</div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="lbBgClick(event)">
+  <div class="lb-inner">
+    <div class="lb-header">
+      <div class="lb-title" id="lbTitle">—</div>
+      <button class="lb-close" onclick="closeLb()">✕</button>
+    </div>
+    <div class="lb-image"><img id="lbImg" src="" alt="Chart"></div>
+    <div class="lb-nav">
+      <button class="lb-nav-btn" id="lbPrev" onclick="lbNav(-1)">← Zurück</button>
+      <span class="lb-counter" id="lbCounter"></span>
+      <button class="lb-nav-btn" id="lbNext" onclick="lbNav(1)">Weiter →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const S = {
+  recent:  {charts:[], filtered:[], dir:'all', tf:'all', grade:'all', sort:'newest', search:''},
+  archive: {charts:[], filtered:[], dir:'all', tf:'all', grade:'all', sort:'newest', search:''},
+};
+let currentTab='recent', lbSrc=[], lbIdx=0, countdown=30, cdTimer=null;
+
+const CC = {'Smart Money':'#f0c040','Divergenz':'#4fc3f7','GUSS':'#ce93d8','EMA Cross':'#ffcc80','Other':'#90a4ae'};
+const GC = {S:'#f0c040', A:'#26a69a', B:'#4fc3f7', C:'#ff9800', F:'#ef5350'};
+
+// Score bar color: green→yellow→red based on pct
+function scoreColor(pct) {
+  if (pct >= 75) return '#26a69a';
+  if (pct >= 60) return '#4fc3f7';
+  if (pct >= 40) return '#ff9800';
+  return '#ef5350';
+}
+
+function ago(iso) {
+  if (!iso) return '';
+  const m = Math.floor((Date.now()-new Date(iso))/60000);
+  if (m<1) return 'gerade eben';
+  if (m<60) return `${m} Min`;
+  return `${Math.floor(m/60)} Std`;
+}
+function fmtDay(d) {
+  try { return new Date(d+'T12:00:00').toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'}); }
+  catch { return d; }
+}
+function fmt(n) { return n != null ? Number(n).toLocaleString('de-DE',{maximumFractionDigits:0}) : '—'; }
+
+// ── Tab ──────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab=tab;
+  document.getElementById('tabBtnRecent').classList.toggle('active',tab==='recent');
+  document.getElementById('tabBtnArchive').classList.toggle('active',tab==='archive');
+  document.getElementById('tabRecent').style.display  = tab==='recent' ?'':'none';
+  document.getElementById('tabArchive').style.display = tab==='archive'?'':'none';
+  if (tab==='archive' && !S.archive.charts.length) loadArchive();
+}
+
+// ── API ──────────────────────────────────────────────────────
+async function loadRecent() {
+  try {
+    const d = await fetch('/api/charts/recent').then(r=>r.json());
+    S.recent.charts = d.charts;
+    document.getElementById('recentCount').textContent = d.charts.length;
+    renderStats(d.stats, d.cutoff_minutes);
+    buildTfFilter('recent', d.stats.by_tf);
+    applyFilters('recent');
+  } catch(e) {
+    document.getElementById('recentGrid').innerHTML=`<div class="empty-state"><div class="empty-icon">⚠</div><div>API nicht erreichbar</div></div>`;
+  }
+}
+
+async function loadArchive(date='', hour='') {
+  try {
+    let url='/api/charts/archive';
+    const p=[];
+    if (date) p.push('date='+date);
+    if (hour) p.push('hour='+hour);
+    if (p.length) url+='?'+p.join('&');
+    const d = await fetch(url).then(r=>r.json());
+    S.archive.charts = d.charts;
+    document.getElementById('archiveCount').textContent = d.charts.length;
+    buildTfFilter('archive', d.stats.by_tf);
+    const ds=document.getElementById('arcDate'), hs=document.getElementById('arcHour');
+    ds.innerHTML='<option value="">Alle Tage</option>'+d.available_days.map(v=>`<option value="${v}" ${v===date?'selected':''}>${fmtDay(v)}</option>`).join('');
+    hs.innerHTML='<option value="">Alle Stunden</option>'+d.available_hours.map(v=>`<option value="${v}" ${v===hour?'selected':''}>${v}:00 – ${v}:59 Uhr</option>`).join('');
+    applyFilters('archive');
+  } catch(e) {
+    document.getElementById('archiveGrid').innerHTML=`<div class="empty-state"><div class="empty-icon">⚠</div><div>Fehler beim Laden</div></div>`;
+  }
+}
+
+function applyArcFilter() { loadArchive(document.getElementById('arcDate').value, document.getElementById('arcHour').value); }
+function resetArcFilter() { document.getElementById('arcDate').value=''; document.getElementById('arcHour').value=''; loadArchive(); }
+
+// ── Stats ─────────────────────────────────────────────────────
+function renderStats(s, cutoff) {
+  const lp = s.total ? Math.round(s.long/s.total*100) : 0;
+  const sp = s.total ? Math.round(s.short/s.total*100) : 0;
+  const topCat = Object.entries(s.by_category||{})[0];
+  const topTf  = Object.entries(s.by_tf||{}).sort((a,b)=>b[1]-a[1])[0];
+  const gd     = s.grade_dist || {};
+  const gradeHtml = ['S','A','B','C'].map(g=>
+    gd[g] ? `<span style="color:${GC[g]};font-weight:700">${g}:${gd[g]}</span>` : ''
+  ).filter(Boolean).join(' ');
+
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="stat-card" style="--accent-bar:var(--accent)">
+      <div class="stat-label">Letzte ${cutoff||60} Min</div>
+      <div class="stat-value">${s.total}</div><div class="stat-sub">Aktive Signale</div>
+    </div>
+    <div class="stat-card" style="--accent-bar:var(--long)">
+      <div class="stat-label">Long</div>
+      <div class="stat-value" style="color:var(--long)">${s.long}</div><div class="stat-sub">${lp}%</div>
+    </div>
+    <div class="stat-card" style="--accent-bar:var(--short)">
+      <div class="stat-label">Short</div>
+      <div class="stat-value" style="color:var(--short)">${s.short}</div><div class="stat-sub">${sp}%</div>
+    </div>
+    <div class="stat-card" style="--accent-bar:var(--accent2)">
+      <div class="stat-label">Ø Score</div>
+      <div class="stat-value" style="color:var(--accent2);font-size:22px;padding-top:4px">${s.avg_score!=null?s.avg_score+'%':'—'}</div>
+      <div class="stat-sub" style="font-family:var(--mono);font-size:10px">${gradeHtml||'keine Grades'}</div>
+    </div>
+    <div class="stat-card" style="--accent-bar:#ce93d8">
+      <div class="stat-label">Top Kategorie</div>
+      <div class="stat-value" style="font-size:15px;padding-top:6px">${topCat?topCat[0]:'—'}</div>
+      <div class="stat-sub">${topCat?topCat[1]+' Signale':'keine'}</div>
+    </div>
+    <div class="stat-card" style="--accent-bar:var(--accent)">
+      <div class="stat-label">Top Timeframe</div>
+      <div class="stat-value" style="color:var(--accent)">${topTf?topTf[0]:'—'}</div>
+      <div class="stat-sub">Letztes: ${s.latest||'—'}</div>
+    </div>`;
+}
+
+// ── TF Filter ─────────────────────────────────────────────────
+function buildTfFilter(tab, byTf) {
+  const id = tab==='recent'?'rTfFilter':'aTfFilter';
+  document.getElementById(id).innerHTML=
+    `<button class="filter-btn active" onclick="setFilter('${tab}','tf','all',this)">Alle TFs</button>`+
+    Object.keys(byTf).sort().map(tf=>
+      `<button class="filter-btn" onclick="setFilter('${tab}','tf','${tf}',this)">${tf.toUpperCase()}</button>`
+    ).join('');
+}
+
+// ── Filters ───────────────────────────────────────────────────
+function setFilter(tab, type, val, btn) {
+  S[tab][type]=val;
+  const scopeMap = {
+    dir:   tab==='recent'?'#rDirFilter button':'#aDirFilter button',
+    tf:    tab==='recent'?'#rTfFilter button':'#aTfFilter button',
+    grade: tab==='recent'?'#rGradeFilter button':'#aGradeFilter button',
+  };
+  document.querySelectorAll(scopeMap[type]).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters(tab);
+}
+function setSort(tab,v)   { S[tab].sort=v; applyFilters(tab); }
+function setSearch(tab,v) { S[tab].search=v.toLowerCase(); applyFilters(tab); }
+
+function applyFilters(tab) {
+  const s=S[tab];
+  let f=s.charts.filter(c=>{
+    if (s.dir!=='all' && c.direction!==s.dir) return false;
+    if (s.tf !=='all' && c.timeframe!==s.tf)  return false;
+    if (s.grade!=='all' && (!c.score || c.score.grade!==s.grade)) return false;
+    if (s.search && ![c.signal,c.label,c.category].some(x=>x.toLowerCase().includes(s.search))) return false;
+    return true;
+  });
+  const scoreOf = c => c.score ? c.score.pct : 0;
+  if      (s.sort==='oldest')     f=[...f].reverse();
+  else if (s.sort==='score_desc') f=[...f].sort((a,b)=>scoreOf(b)-scoreOf(a));
+  else if (s.sort==='score_asc')  f=[...f].sort((a,b)=>scoreOf(a)-scoreOf(b));
+  else if (s.sort==='tf')         f=[...f].sort((a,b)=>a.timeframe.localeCompare(b.timeframe));
+  s.filtered=f;
+  document.getElementById(tab==='recent'?'rCountBadge':'aCountBadge').textContent=`${f.length} Signal${f.length!==1?'e':''}`;
+  renderCards(tab);
+}
+
+// ── Cards ─────────────────────────────────────────────────────
+function renderCards(tab) {
+  const gridId = tab==='recent'?'recentGrid':'archiveGrid';
+  const list   = S[tab].filtered;
+  if (!list.length) {
+    const msg = tab==='recent'
+      ? 'Keine Signale in den letzten 60 Min<br><small style="color:var(--border2)">Der Bot analysiert weiter …</small>'
+      : 'Keine Signale für diesen Filter';
+    document.getElementById(gridId).innerHTML=`<div class="empty-state"><div class="empty-icon">${tab==='recent'?'⚡':'🗄'}</div><div>${msg}</div></div>`;
+    return;
+  }
+
+  document.getElementById(gridId).innerHTML = list.map((c,i)=>{
+    const dc  = c.direction==='LONG'?'long':'short';
+    const cc  = CC[c.category]||'#90a4ae';
+    const a   = ago(c.ts_iso);
+    const sc  = c.score;
+    const delay = Math.min(i*30, 500);
+
+    // Grade badge
+    const gradeBadge = sc
+      ? `<div class="grade-badge" style="color:${sc.grade_color};border-color:${sc.grade_color}40;background:${sc.grade_color}10">${sc.grade}</div>`
+      : '';
+
+    return `
+      <div class="chart-card ${dc}-card" style="animation-delay:${delay}ms">
+        <div class="card-header">
+          <div class="card-left">
+            ${gradeBadge}
+            <span class="dir-badge ${dc}">${c.direction==='LONG'?'▲ LONG':'▼ SHORT'}</span>
+            <span class="tf-badge">${c.timeframe.toUpperCase()}</span>
+            <span class="signal-name">${c.label}</span>
+          </div>
+          <div class="card-right">
+            ${c.timestamp}
+            ${a?`<br><span class="age-pill">vor ${a}</span>`:''}
+          </div>
+        </div>
+
+        <div class="card-image" onclick="openLb('${tab}',${i})">
+          <div class="img-loading">Lade …</div>
+          <img src="/api/charts/${c.filename}" alt="${c.signal}" loading="lazy"
+               onload="this.previousElementSibling.style.display='none'"
+               onerror="this.previousElementSibling.textContent='—'">
+          <div class="zoom-hint">⤢ Vergrößern</div>
+        </div>
+
+        ${renderScorecard(c, i, tab)}
+      </div>`;
+  }).join('');
+}
+
+// ── Scorecard HTML ────────────────────────────────────────────
+function renderScorecard(c, i, tab) {
+  const sc = c.score;
+  if (!sc) {
+    return `<div class="no-score">Keine Score-Daten verfügbar</div>`;
+  }
+
+  const uid = `sc_${tab}_${i}`;
+  const pct = sc.pct;
+  const col = scoreColor(pct);
+  const trade = sc.trade || {};
+
+  // Dimension rows
+  const dims = Object.entries(sc.scores||{}).map(([name, dim])=>{
+    const score = Array.isArray(dim) ? dim[0] : dim.score;
+    const max   = Array.isArray(dim) ? dim[1] : dim.max;
+    const note  = Array.isArray(dim) ? dim[2] : dim.note;
+    const dpct = max>0 ? (score/max*100) : 0;
+    const dcol = scoreColor(dpct);
+    return `
+      <div class="sc-dim">
+        <div class="sc-dim-name" title="${name}">${name}</div>
+        <div class="sc-bar-track"><div class="sc-bar-fill" style="width:${dpct}%;background:${dcol}"></div></div>
+        <div class="sc-pts">${score}/${max}</div>
+      </div>
+      <div class="sc-dim" style="margin-top:-4px">
+        <div></div>
+        <div class="sc-note" style="grid-column:1/5" title="${note}">${note}</div>
+      </div>`;
+  }).join('');
+
+  // RR pills
+  const tps  = trade.take_profits || [];
+  const rrs  = trade.rr_ratios    || [];
+  const rrPills = rrs.map((rr,i)=>{
+    const rrCol = rr>=3?'var(--long)': rr>=2?'var(--accent2)': rr>=1.5?'var(--accent)':'var(--muted)';
+    return `<div class="sc-rr-pill">
+      <div class="sc-rr-label">TP${i+1}</div>
+      <div class="sc-rr-value" style="color:${rrCol}">${Number(rr).toFixed(1)}R</div>
+    </div>`;
+  }).join('');
+
+  // Reasons
+  const passHtml = (sc.reasons_pass||[]).slice(0,3).map(r=>`<div class="sc-reason pass">✓ ${r}</div>`).join('');
+  const failHtml = (sc.reasons_fail||[]).map(r=>`<div class="sc-reason fail">✗ ${r}</div>`).join('');
+
+  return `
+    <div class="scorecard">
+      <div class="scorecard-toggle" onclick="toggleSc('${uid}')">
+        <div class="scorecard-toggle-left">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">SCORE</span>
+          <div class="score-total-bar">
+            <div class="score-total-fill" style="width:${pct}%;background:${col}"></div>
+          </div>
+          <span class="score-total-text" style="color:${col}">${sc.total}/${sc.max} <span style="color:var(--muted)">(${pct}%)</span></span>
+        </div>
+        <span class="toggle-arrow" id="arr_${uid}">▼</span>
+      </div>
+
+      <div class="scorecard-body" id="${uid}">
+
+        <!-- Trade Details -->
+        <div class="sc-trade">
+          <div class="sc-trade-item">
+            <div class="sc-trade-label">Entry</div>
+            <div class="sc-trade-value" style="color:var(--accent)">${fmt(trade.entry)}</div>
+          </div>
+          <div class="sc-trade-item">
+            <div class="sc-trade-label">Stop Loss</div>
+            <div class="sc-trade-value" style="color:var(--short)">${fmt(trade.stop_loss)}</div>
+          </div>
+          <div class="sc-trade-item">
+            <div class="sc-trade-label">Risiko</div>
+            <div class="sc-trade-value" style="color:var(--muted)">$${trade.risk_amount!=null?Number(trade.risk_amount).toFixed(0):'—'}</div>
+          </div>
+          ${tps[0]!=null?`<div class="sc-trade-item"><div class="sc-trade-label">TP1</div><div class="sc-trade-value" style="color:var(--long)">${fmt(tps[0])}</div></div>`:''}
+          ${tps[1]!=null?`<div class="sc-trade-item"><div class="sc-trade-label">TP2</div><div class="sc-trade-value" style="color:var(--long)">${fmt(tps[1])}</div></div>`:''}
+          ${tps[2]!=null?`<div class="sc-trade-item"><div class="sc-trade-label">TP3</div><div class="sc-trade-value" style="color:var(--long)">${fmt(tps[2])}</div></div>`:''}
+        </div>
+
+        <!-- RR Pills -->
+        ${rrPills ? `<div class="sc-rr">${rrPills}</div>` : ''}
+
+        <!-- Dimension Bars -->
+        <div class="sc-dims">${dims}</div>
+
+        <!-- Reasons -->
+        ${passHtml||failHtml ? `<div class="sc-reasons">${passHtml}${failHtml}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function toggleSc(uid) {
+  const body = document.getElementById(uid);
+  const arr  = document.getElementById('arr_'+uid);
+  const open = body.classList.toggle('open');
+  arr.classList.toggle('open', open);
+}
+
+// ── Lightbox ──────────────────────────────────────────────────
+function openLb(tab,idx) { lbSrc=S[tab].filtered; lbIdx=idx; updateLb(); document.getElementById('lightbox').classList.add('open'); document.body.style.overflow='hidden'; }
+function updateLb() {
+  const c=lbSrc[lbIdx];
+  const sc=c.score;
+  const gc=sc?sc.grade_color:'#7d8590';
+  document.getElementById('lbImg').src=`/api/charts/${c.filename}`;
+  document.getElementById('lbTitle').innerHTML=
+    `<span class="dir-badge ${c.direction==='LONG'?'long':'short'}">${c.direction}</span>`+
+    `<span class="tf-badge">${c.timeframe.toUpperCase()}</span>`+
+    `<span style="font-size:11px;color:var(--muted)">${c.label} · ${c.timestamp}</span>`+
+    (sc?`<span style="font-family:var(--mono);font-size:11px;color:${gc};background:${gc}18;border:1px solid ${gc}40;padding:2px 8px;border-radius:4px">${sc.grade} · ${sc.total}/${sc.max} (${sc.pct}%)</span>`:'');
+  document.getElementById('lbCounter').textContent=`${lbIdx+1} / ${lbSrc.length}`;
+  document.getElementById('lbPrev').disabled=lbIdx===0;
+  document.getElementById('lbNext').disabled=lbIdx===lbSrc.length-1;
+}
+function lbNav(d) { lbIdx=Math.max(0,Math.min(lbSrc.length-1,lbIdx+d)); updateLb(); }
+function lbBgClick(e) { if(e.target===document.getElementById('lightbox')) closeLb(); }
+function closeLb() { document.getElementById('lightbox').classList.remove('open'); document.body.style.overflow=''; }
+document.addEventListener('keydown',e=>{
+  if (!document.getElementById('lightbox').classList.contains('open')) return;
+  if (e.key==='Escape') closeLb();
+  if (e.key==='ArrowLeft')  lbNav(-1);
+  if (e.key==='ArrowRight') lbNav(1);
+});
+
+// ── Countdown ─────────────────────────────────────────────────
+function refreshAll() { loadRecent(); if(currentTab==='archive') applyArcFilter(); resetCd(); }
+function resetCd()    { countdown=30; updateCd(); }
+function updateCd()   { document.getElementById('countdownVal').textContent=countdown; document.getElementById('progressFill').style.width=(countdown/30*100)+'%'; }
+function startCd() {
+  if (cdTimer) clearInterval(cdTimer);
+  cdTimer=setInterval(()=>{ countdown--; if(countdown<=0){loadRecent();countdown=30;} updateCd(); },1000);
+}
+
+// ── Init ──────────────────────────────────────────────────────
+loadRecent();
+startCd();
+</script>
+</body>
+</html>

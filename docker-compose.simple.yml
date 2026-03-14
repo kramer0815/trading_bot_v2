@@ -1,0 +1,75 @@
+# ── Trading Bot — ohne SSL/HTTPS ──────────────────────────────
+# Zugriff via http://DEINE-IP:5000
+# Starten mit: docker compose -f docker-compose.simple.yml up --build -d
+
+services:
+
+  trading-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: btc_trading_bot
+    restart: unless-stopped
+    environment:
+      - EXCHANGE=${EXCHANGE:-binance}
+      - SYMBOL=${SYMBOL:-BTC/USDT}
+      - API_KEY=${API_KEY:-}
+      - API_SECRET=${API_SECRET:-}
+      - TIMEFRAMES=${TIMEFRAMES:-15m,1h,4h,1d}
+      - CANDLE_LIMIT=${CANDLE_LIMIT:-300}
+      - RUN_ONCE=false
+      - LOOP_INTERVAL_MINUTES=${LOOP_INTERVAL_MINUTES:-15}
+      - RISK_PERCENT=${RISK_PERCENT:-1.0}
+      - ACCOUNT_BALANCE=${ACCOUNT_BALANCE:-10000}
+      - ATR_SL_MULT=${ATR_SL_MULT:-1.5}
+      - RSI_PERIOD=14
+      - RSI_OVERSOLD=30
+      - RSI_OVERBOUGHT=70
+      - MACD_FAST=12
+      - MACD_SLOW=26
+      - MACD_SIGNAL=9
+      - EMA_SHORT=9
+      - EMA_LONG=21
+      - EMA_TREND=200
+      - CHART_OUTPUT_DIR=/app/charts
+      - CHART_CANDLES=80
+      - GUSS_MIN_GAP_PCT=0.3
+      - LSOB_VOLUME_MULT=1.5
+      - QF_MIN_SCORE=40
+      - QF_MIN_RR=1.8
+    volumes:
+      - charts_data:/app/charts
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: btc_dashboard
+    restart: unless-stopped
+    environment:
+      - CHART_OUTPUT_DIR=/app/charts
+      - EXCHANGE=${EXCHANGE:-binance}
+      - SYMBOL=${SYMBOL:-BTC/USDT}
+      - API_KEY=${API_KEY:-}
+      - API_SECRET=${API_SECRET:-}
+    volumes:
+      - charts_data:/app/charts
+      - macro_cache:/app/macro_cache
+    ports:
+      - "5000:5000"
+    depends_on:
+      - trading-bot
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+volumes:
+  charts_data:
+  macro_cache:

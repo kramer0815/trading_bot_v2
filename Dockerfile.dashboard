@@ -1,0 +1,20 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY webapp/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY webapp/requirements_bot.txt .
+RUN pip install --no-cache-dir -r requirements_bot.txt
+
+COPY webapp/app.py       ./app.py
+COPY webapp/templates/   ./templates/
+COPY config.py           ./config.py
+COPY analysis/           ./analysis/
+
+ENV CHART_OUTPUT_DIR=/app/charts
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]
